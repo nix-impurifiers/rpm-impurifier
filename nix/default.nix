@@ -5,6 +5,7 @@ let
   core = import (coreSrc + "/nix") {
     inherit pkgs;
     namespace = "rpm-impurifier";
+    sourceInfo = coreSrc;
   };
   architecture =
     if pkgs.stdenv.hostPlatform.isx86_64 then
@@ -113,9 +114,9 @@ let
       inherit release payload architecture;
       license = packageLicense;
       extraSpec = ''
-        Requires: rpm-impurifier >= 0.1.0
+        Requires: rpm-impurifier >= ${core.runtimeVersion}
         ${lib.optionalString (
-          payload.hostEnabled && hostDependencies != [ ]
+          (payload.hostEnabled || (args.hostDependencies or null) != null) && hostDependencies != [ ]
         ) "Requires: ${lib.concatStringsSep ", " hostDependencies}"}
         Provides: ${payload.name} = ${payload.version}-${release}
         Conflicts: ${payload.name}-${if payload.offline then "net" else "offline"}
@@ -131,7 +132,7 @@ let
     ) "invalid native Nix dependency expression";
     buildRpm {
       name = "rpm-impurifier";
-      version = "0.1.0";
+      version = core.runtimeVersion;
       payload = core.makeRuntimeTree { };
       description = "Native package intent projected into a Nix profile";
       license = "MIT";
@@ -150,7 +151,12 @@ let
     };
 in
 {
-  inherit (core) engine offlineCache unit;
+  inherit (core)
+    engine
+    offlineCache
+    unit
+    runtimeVersion
+    ;
   inherit makeRpm makeRuntimeRpm buildRpm;
   runtimeRpm = makeRuntimeRpm { };
   makePackage = args: {

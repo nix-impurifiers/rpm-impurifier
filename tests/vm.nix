@@ -77,6 +77,7 @@ let
       payload = hardwareFixture.driver version;
     };
   hardwareApp = impurifier.makeOfflineRpm {
+    hostDependencies = [ "impurifier-host-driver" ];
     pkg = hardwareFixture.tool;
     inherit (hardwareFixture) hardware;
   };
@@ -180,6 +181,8 @@ pkgs.testers.runNixOSTest {
         machine.fail("systemctl is-active --quiet rpm-service.service")
         machine.fail("test -L /etc/systemd/system/multi-user.target.wants/rpm-service.service")
     with subtest("native library upgrades refresh the hardware snapshot"):
+        code, output = machine.execute("rpm -Uvh /tmp/packages/hardware.rpm 2>&1")
+        assert code != 0 and "impurifier-host-driver" in output, output
         machine.succeed("rpm -Uvh /tmp/packages/driver1.rpm /tmp/packages/hardware.rpm")
         machine.succeed("/opt/nix/profile/bin/hardware-tool | grep '^1$'")
         before = machine.succeed("readlink /opt/nix/profile").strip()
