@@ -45,6 +45,16 @@ let
         owner = "rpm-service:rpm-service";
         mode = "0750";
       };
+      lifecycle = {
+        onInstall = ''
+          /usr/bin/python3 -c "import pwd; pwd.getpwnam('rpm-service')"
+          test -x /opt/nix/profile/bin/rpm-service
+          echo initialized > /var/lib/rpm-service/initialized
+        '';
+        onUpgrade = ''
+          echo ${version} > /var/lib/rpm-service/migrated
+        '';
+      };
       systemd.unit = pkgs.writeText "rpm-service.service" ''
         [Service]
         Type=exec
@@ -145,6 +155,7 @@ pkgs.testers.runNixOSTest {
         machine.succeed("id rpm-service; test $(stat -c %U /var/lib/rpm-service) = rpm-service")
         machine.succeed("rpm -Uvh /tmp/packages/service2.rpm")
         machine.wait_until_succeeds("grep '^2$' /var/lib/rpm-service/version")
+        machine.succeed("grep initialized /var/lib/rpm-service/initialized; grep '^2$' /var/lib/rpm-service/migrated")
         machine.succeed("systemctl disable --now rpm-service.service; rpm -Uvh --oldpackage /tmp/packages/service1.rpm")
         machine.fail("systemctl is-active --quiet rpm-service.service")
         machine.fail("systemctl is-enabled --quiet rpm-service.service")
