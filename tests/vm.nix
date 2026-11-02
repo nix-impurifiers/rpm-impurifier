@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: MIT
-{ pkgs, impurifier }:
+{
+  pkgs,
+  impurifier,
+  hardwareFixture,
+}:
 let
   tool =
     version:
@@ -64,6 +68,18 @@ let
         WantedBy=multi-user.target
       '';
     };
+  hostDriver =
+    version:
+    impurifier.buildRpm {
+      name = "impurifier-host-driver";
+      architecture = "x86_64";
+      inherit version;
+      payload = hardwareFixture.driver version;
+    };
+  hardwareApp = impurifier.makeOfflineRpm {
+    pkg = hardwareFixture.tool;
+    inherit (hardwareFixture) hardware;
+  };
   provider = impurifier.buildRpm {
     name = "vm-runtime";
     version = "1";
@@ -112,6 +128,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("cp -rL /etc/systemd/system /tmp/systemd-system; chmod -R u+w /tmp/systemd-system; rm /etc/systemd/system; mv /tmp/systemd-system /etc/systemd/system; systemctl daemon-reload")
     machine.succeed("rpm --initdb; mkdir -p /tmp/packages")
     machine.succeed("cp ${app true "1"} /tmp/packages/offline1.rpm; cp ${app false "1"} /tmp/packages/net1.rpm; cp ${app true "2"} /tmp/packages/offline2.rpm; cp ${service "1"} /tmp/packages/service1.rpm; cp ${service "2"} /tmp/packages/service2.rpm")
+    machine.succeed("cp ${hostDriver "1"} /tmp/packages/driver1.rpm; cp ${hostDriver "2"} /tmp/packages/driver2.rpm; cp ${hardwareApp} /tmp/packages/hardware.rpm")
     machine.succeed("systemctl stop dhcpcd; ip link set eth0 down")
     machine.succeed("rpm -Uvh ${provider} ${impurifier.runtimeRpm}")
     machine.fail("test -e ${builtins.unsafeDiscardStringContext (toString (tool "1"))}")
@@ -162,6 +179,14 @@ pkgs.testers.runNixOSTest {
         machine.succeed("systemctl enable --now rpm-service.service; rpm -e rpm-service-offline")
         machine.fail("systemctl is-active --quiet rpm-service.service")
         machine.fail("test -L /etc/systemd/system/multi-user.target.wants/rpm-service.service")
+    with subtest("native library upgrades refresh the hardware snapshot"):
+        machine.succeed("rpm -Uvh /tmp/packages/driver1.rpm /tmp/packages/hardware.rpm")
+        machine.succeed("/opt/nix/profile/bin/hardware-tool | grep '^1$'")
+        before = machine.succeed("readlink /opt/nix/profile").strip()
+        machine.succeed("rpm -Uvh /tmp/packages/driver2.rpm")
+        assert machine.succeed("readlink /opt/nix/profile").strip() != before
+        machine.succeed("/opt/nix/profile/bin/hardware-tool | grep '^2$'")
+        machine.succeed("rpm -e hardware-tool-offline impurifier-host-driver")
     with subtest("GC and removal honor rooted profile generations"):
         machine.succeed("nix-store --gc; test $(/opt/nix/profile/bin/rpm-tool) = 2")
         machine.succeed("rpm -e rpm-tool-offline")

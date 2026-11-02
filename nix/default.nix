@@ -142,9 +142,9 @@ let
       scriptlets = ''
         %posttrans
         /usr/sbin/nix-profile-engine reconcile
-        %transfiletriggerin -- /usr/share/nix-profile.d
+        %transfiletriggerin -- /usr/share/nix-profile.d /usr/lib /usr/lib64 /lib /lib64
         /usr/sbin/nix-profile-engine reconcile
-        %transfiletriggerpostun -- /usr/share/nix-profile.d
+        %transfiletriggerpostun -- /usr/share/nix-profile.d /usr/lib /usr/lib64 /lib /lib64
         /usr/sbin/nix-profile-engine reconcile
       '';
     };
