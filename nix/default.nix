@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 { pkgs, coreSrc }:
 let
   inherit (pkgs) lib;
@@ -134,7 +134,7 @@ let
       version = "0.1.0";
       payload = core.makeRuntimeTree { };
       description = "Native package intent projected into a Nix profile";
-      license = "GPL-3.0-or-later";
+      license = "MIT";
       extraSpec = ''
         Requires: python3, /bin/sh
         Requires: ${nixDependency}

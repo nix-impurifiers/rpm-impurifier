@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 {
   description = "Native RPM packages backed by transactional Nix profiles";
   inputs = {
