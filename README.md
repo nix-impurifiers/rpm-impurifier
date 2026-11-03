@@ -94,7 +94,7 @@ installation. Repository VMs additionally exercise DNF 4, DNF 5, microdnf
 and tdnf with real createrepo metadata, ephemeral native GPG signing, damaged
 and unsigned package rejection, net failure/offline recovery, transport
 replacement, upgrades/conffiles, runtime removal and GC. The DNF 4 SDK's actual `yum` entry point has its own
-matrix test; this does not claim coverage of historical Yum 3.
+matrix test. Historical Yum 3 has a separate Python 2/RPM 4.14 SDK and VM.
 
 A separate VM runs Zypper 1.14.102/libzypp 17.38.17 and its real RPM database
 inside the pinned official openSUSE Tumbleweed 20261031 userspace. It checks
@@ -103,7 +103,48 @@ rejection, net failure/offline recovery, ordinary-user launch, unchanged native
 checksums, upgrades/conffiles and runtime removal/GC. Nix and Python are supplied
 by an explicitly owned native fixture provider. The fixture shares real Nix
 state and roots with its NixOS host; it does not boot a full SUSE init system.
-The other RPM frontends remain separate compatibility work.
+Additional VMs use genuine Poldek 0.45, urpmi 8.133.1/URPM 5.225, and the
+complete official ALT Sisyphus userspace with APT-RPM and ALT RPM 4.13. These
+exercise native local-package transactions, signature/corruption policy,
+net failure/offline recovery, native ownership and verification, configuration
+preservation, ordinary-user execution, upgrades and removal/GC. Poldek's local
+directory source resolves actual native dependencies; urpmi and ALT use local
+package files. Remote Poldek indexes, urpmi hdlist media and ALT repository
+publication are separate coverage. The ALT fixture shares actual Nix state
+with its NixOS host and does not claim a complete ALT boot.
+
+For older frontends, instantiate the library with `rpmCompatibility = "alt"`
+or `"rpm4.14"` alongside `pkgs` and `coreSrc`. Both select native gzip payloads.
+The ALT setting additionally uses librpm to omit the optional SHA256 header
+digest tag that ALT RPM 4.13 cannot verify. It leaves the main header and payload
+unchanged, refuses signed inputs, and runs before the publisher signs the
+artifact. Native ALT signing and verification must succeed; corrupt packages
+must still fail verification. The default `"modern"` format remains unchanged.
+
+ALT APT-RPM disables librpm transaction verification. For signed local packages,
+install `altVerificationHook` as `/usr/sbin/impurifier-verify-rpms` (mode 0755)
+and add this to `/etc/apt/apt.conf.d/impurifier-verify.conf`:
+
+```text
+RPM::Pre-Install-Pkgs { "/usr/sbin/impurifier-verify-rpms"; };
+```
+
+The hook requires successful native `rpm -Kv` verification and a valid signature
+for every incoming package before APT starts the transaction. Import the
+publisher's trusted key into the native RPM database first. The VM checks both
+unsigned and damaged artifacts against this policy. This policy covers all
+incoming RPMs in that transaction, so use signed provider/runtime RPMs too.
+For urpmi and ALT, use `makeRuntimeRpm { nixDependency = "nix"; }` (or another
+real provider name); urpmi's solver cannot resolve the default rich OR expression.
+
+The SDKs preserve upstream licenses. Poldek uses the upstream RPM compatibility
+fix from commit `8df4ec24557164bdf54d545541934b7bfa577c60`; it does not replace
+its resolver or transaction implementation. Historical Yum uses genuine upstream
+3.4.3 modules, Python 2 bindings and RPM 4.14.2 from pinned Nixpkgs 18.09.
+RPM runtime scriptlets clear inherited `PYTHONHOME` and `PYTHONPATH` before
+starting the Python 3 engine, including when invoked by a Python 2 frontend.
+These isolated compatibility SDKs are test infrastructure, not application
+runtime dependencies.
 
 For an explicit same-version transport replacement, use native
 `dnf5 swap APP-net APP-offline` or `microdnf swap APP-net APP-offline`.

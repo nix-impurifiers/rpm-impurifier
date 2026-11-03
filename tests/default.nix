@@ -16,6 +16,10 @@ let
 in
 {
   unit = impurifier.unit;
+  yum3-vm = import ./yum3-vm.nix { inherit pkgs impurifier; };
+  alt-vm = import ./alt-vm.nix { inherit pkgs impurifier; };
+  urpmi-vm = import ./urpmi-vm.nix { inherit pkgs impurifier; };
+  poldek-vm = import ./poldek-vm.nix { inherit pkgs impurifier; };
   emitter = pkgs.runCommand "rpm-impurifier-emitter" { nativeBuildInputs = [ pkgs.rpm ]; } ''
     test "$(rpm -qp --qf '%{NAME}' ${impurifier.makeNetRpm { pkg = pkgs.hello; }})" = hello-net
     rpm -qp --provides ${impurifier.makeOfflineRpm { pkg = pkgs.hello; }} | grep '^hello = '

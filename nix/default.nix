@@ -3,9 +3,20 @@
   pkgs,
   coreSrc,
   sourceInfo ? { },
+  rpmCompatibility ? "modern",
 }:
 let
   inherit (pkgs) lib;
+  compatibilityTool =
+    pkgs.runCommandCC "rpm-alt-header"
+      {
+        nativeBuildInputs = [ pkgs.pkg-config ];
+        buildInputs = [ pkgs.rpm ];
+      }
+      ''
+        mkdir -p $out/bin
+        $CC -Wall -Wextra -Werror ${./alt-header.c} $(pkg-config --cflags --libs rpm) -o $out/bin/rpm-alt-header
+      '';
   core = import (coreSrc + "/nix") {
     inherit pkgs;
     namespace = "rpm-impurifier";
@@ -41,6 +52,11 @@ let
       builtins.match "[0-9][A-Za-z0-9.+~^_]*" version != null
     ) "invalid RPM version; override version to remove native-incompatible characters";
     assert lib.assertMsg (builtins.match "[A-Za-z0-9._+]+" release != null) "invalid RPM release";
+    assert lib.assertMsg (builtins.elem rpmCompatibility [
+      "modern"
+      "alt"
+      "rpm4.14"
+    ]) "invalid RPM compatibility target";
     pkgs.runCommand "${name}-${version}-${release}.${architecture}.rpm"
       {
         nativeBuildInputs = [ pkgs.rpm ];
@@ -82,13 +98,23 @@ let
           --define "_tmppath $TMPDIR" \
           --define "_dbpath $TMPDIR/rpmdb" \
           --define "_impurifier_filelist $PWD/filelist" \
+          ${lib.optionalString (rpmCompatibility != "modern") "--define '_binary_payload w9.gzdio'"} \
           --define '_buildhost localhost' \
           --define '_buildshell ${pkgs.runtimeShell}' \
           --define '__os_install_post %{nil}' \
           --define '_build_id_links none' \
           --define 'use_source_date_epoch_as_buildtime 1' \
           --define 'clamp_mtime_to_source_date_epoch 1'
-        cp rpmbuild/RPMS/${architecture}/*.rpm "$out"
+        ${
+          if rpmCompatibility == "alt" then
+            ''
+              ${compatibilityTool}/bin/rpm-alt-header rpmbuild/RPMS/${architecture}/*.rpm "$out"
+            ''
+          else
+            ''
+              cp rpmbuild/RPMS/${architecture}/*.rpm "$out"
+            ''
+        }
       '';
   makeRpm =
     args@{
@@ -154,15 +180,19 @@ let
         # Dependent payloads have been erased before this final preun runs,
         # while the engine and its Python/Nix dependencies are still present.
         %preun
+        unset PYTHONHOME PYTHONPATH
         if [ "$1" -eq 0 ]; then
           /usr/sbin/nix-profile-engine reconcile || exit $?
           /usr/sbin/nix-profile-engine prune --keep 0 || exit $?
         fi
         %posttrans
+        unset PYTHONHOME PYTHONPATH
         /usr/sbin/nix-profile-engine reconcile
         %transfiletriggerin -- /usr/share/nix-profile.d /usr/lib /usr/lib64 /lib /lib64
+        unset PYTHONHOME PYTHONPATH
         /usr/sbin/nix-profile-engine reconcile
         %transfiletriggerpostun -- /usr/share/nix-profile.d /usr/lib /usr/lib64 /lib /lib64
+        unset PYTHONHOME PYTHONPATH
         /usr/sbin/nix-profile-engine reconcile
       '';
     };
@@ -175,6 +205,8 @@ in
     runtimeVersion
     ;
   inherit makeRpm makeRuntimeRpm buildRpm;
+  coreSource = coreSrc;
+  altVerificationHook = ./alt-verify.sh;
   runtimeRpm = makeRuntimeRpm { };
   makePackage = args: {
     net = makeRpm (args // { offline = false; });
