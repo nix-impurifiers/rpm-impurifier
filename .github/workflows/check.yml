@@ -191,7 +191,7 @@ jobs:
           extraPullNames: nix-community,numtide
 
       - name: Run the flake checks
-        run: nix flake check --print-build-logs
+        run: nix flake check --print-build-logs --max-jobs 2
 
       - name: Root this build and apply the cache priorities
         env:

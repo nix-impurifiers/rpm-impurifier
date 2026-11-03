@@ -30,3 +30,12 @@ in
     hardwareFixture = import (coreSrc + "/tests/hardware-fixture.nix") { inherit pkgs; };
   };
 }
+//
+  pkgs.lib.genAttrs [ "repository-dnf4" "repository-dnf5" "repository-microdnf" "repository-tdnf" ]
+    (
+      name:
+      import ./repository-vm.nix {
+        inherit pkgs impurifier;
+        frontend = pkgs.lib.removePrefix "repository-" name;
+      }
+    )

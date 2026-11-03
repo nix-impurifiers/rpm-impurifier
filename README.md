@@ -90,7 +90,26 @@ network-disabled offline recovery, provider switching, edited config files,
 upgrades, batching, service users/directories, administrator stop/disable
 preservation, service removal, GC roots and generation pruning. It uses a NixOS
 PID 1 with mutable native-style unit directories, not a complete Fedora/RHEL
-installation. DNF/zypper frontend matrices remain additional compatibility tests.
+installation. Repository VMs additionally exercise DNF 4, DNF 5, microdnf
+and tdnf with real createrepo metadata, ephemeral native GPG signing, damaged
+and unsigned package rejection, net failure/offline recovery, transport
+replacement, upgrades/conffiles, runtime removal and GC. Zypper and the other
+RPM frontends remain separate compatibility work.
+
+For an explicit same-version transport replacement, use native
+`dnf5 swap APP-net APP-offline` or `microdnf swap APP-net APP-offline`.
+DNF 4 needs `dnf4 --setopt=obsoletes=0 swap APP-net APP-offline` so its implicit
+Obsoletes expansion does not select the already-installed reciprocal provider.
+The tested tdnf flow removes the old transport and installs the new one.
+For tdnf 3.5.9 with RPM 4.20, the signed-repository fixture also sets RPM's
+`%_pkgverify_level all`: this native policy is needed to reject unsigned RPMs;
+`gpgcheck=1` alone accepted them in the tested configuration.
+Ordinary version upgrades use the frontend's native `upgrade` command.
+
+When a solver removes the runtime along with its last dependent application,
+the runtime's final `%preun` reconciles the now-empty intent and prunes retained
+generations while its engine, Nix and Python dependencies are still available.
+Runtime upgrades retain the normal generation policy.
 
 `buildRpm` is a lower-level helper accepting an already-prepared filesystem
 `payload`, `name`, `version`, optional `release`, `architecture`, `description`,
@@ -115,4 +134,4 @@ The engine captures explicitly selected ELF files into an immutable Nix-store di
 
 Consumers select compatible libraries, their non-Nix dependencies, paths and native package dependencies. This does not discover a GPU stack, validate its ABI, rebind already-running processes, or roll back kernel modules. GPU user/kernel compatibility and real-device behavior need hardware tests. Sources outside `/usr/lib`, `/usr/lib64`, `/lib` and `/lib64` need explicit reconciliation after updates. This is a bounded runtime bridge, not automatic GPU compatibility.
 
-The exported `runtimeVersion` follows the pinned core source timestamp. Application dependencies require that runtime version or newer, rather than accepting every engine as `0.1.0`. This supports ordinary native engine upgrades without project release tags. Consumer-provided Nix dependency expressions remain independent of the engine's own native version.
+The exported `runtimeVersion` follows the later of the pinned core and adapter source timestamps. Application dependencies require that runtime version or newer, rather than accepting every engine as `0.1.0`. This supports ordinary native engine upgrades without project release tags. Consumer-provided Nix dependency expressions remain independent of the engine's own native version.

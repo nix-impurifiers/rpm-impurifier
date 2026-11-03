@@ -150,6 +150,14 @@ let
         Requires: ${nixDependency}
       '';
       scriptlets = ''
+        # Solvers may autoremove this runtime with its last dependent app.
+        # Dependent payloads have been erased before this final preun runs,
+        # while the engine and its Python/Nix dependencies are still present.
+        %preun
+        if [ "$1" -eq 0 ]; then
+          /usr/sbin/nix-profile-engine reconcile || exit $?
+          /usr/sbin/nix-profile-engine prune --keep 0 || exit $?
+        fi
         %posttrans
         /usr/sbin/nix-profile-engine reconcile
         %transfiletriggerin -- /usr/share/nix-profile.d /usr/lib /usr/lib64 /lib /lib64
