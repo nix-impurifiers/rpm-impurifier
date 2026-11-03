@@ -113,8 +113,18 @@ package files. Remote Poldek indexes, urpmi hdlist media and ALT repository
 publication are separate coverage. The ALT fixture shares actual Nix state
 with its NixOS host and does not claim a complete ALT boot.
 
-For older frontends, instantiate the library with `rpmCompatibility = "alt"`
-or `"rpm4.14"` alongside `pkgs` and `coreSrc`. Both select native gzip payloads.
+For older frontends, pass `rpmCompatibility = "alt"` or `"rpm4.14"` to the
+public flake library factory:
+
+```nix
+inputs.rpm-impurifier.lib.rpm-impurifier {
+  inherit pkgs;
+  rpmCompatibility = "alt";
+}
+```
+
+Direct source imports also accept this option alongside `pkgs` and `coreSrc`.
+Both compatibility settings select native gzip payloads.
 The ALT setting additionally uses librpm to omit the optional SHA256 header
 digest tag that ALT RPM 4.13 cannot verify. It leaves the main header and payload
 unchanged, refuses signed inputs, and runs before the publisher signs the

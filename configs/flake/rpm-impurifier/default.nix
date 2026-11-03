@@ -4,9 +4,12 @@
 {
   flake.lib = lib.mkForce {
     rpm-impurifier =
-      { pkgs }:
+      {
+        pkgs,
+        rpmCompatibility ? "modern",
+      }:
       import ../../../nix {
-        inherit pkgs;
+        inherit pkgs rpmCompatibility;
         coreSrc = inputs.impurifier;
         sourceInfo = inputs.self;
       };
