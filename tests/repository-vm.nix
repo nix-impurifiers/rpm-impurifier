@@ -7,6 +7,7 @@
 let
   clients = {
     dnf4 = pkgs.dnf4;
+    yum = pkgs.dnf4;
     dnf5 = pkgs.dnf5;
     microdnf = pkgs.microdnf.overrideAttrs (old: {
       cmakeFlags = (old.cmakeFlags or [ ]) ++ [ "-DCMAKE_EXE_LINKER_FLAGS=-Wl,--export-dynamic" ];
@@ -95,7 +96,10 @@ pkgs.testers.runNixOSTest {
     machine.succeed("for package in /srv/packages/*.rpm; do rpmsign --define '_gpg_name vm@invalid' --define '__gpg ${pkgs.gnupg}/bin/gpg' --addsign $package; done")
     machine.succeed("rpm --import /srv/repo-key.asc; cp /srv/packages/provider.rpm /srv/packages/runtime.rpm /srv/packages/offline1.rpm /srv/repo/; createrepo_c /srv/repo")
     command = "${client}/bin/${frontend} -y --releasever=1 ${
-      pkgs.lib.optionalString (frontend == "dnf4") "--setopt=pluginconfpath=/etc/dnf/plugins "
+      pkgs.lib.optionalString (builtins.elem frontend [
+        "dnf4"
+        "yum"
+      ]) "--setopt=pluginconfpath=/etc/dnf/plugins "
     }"
     machine.succeed("python3 -c \"from pathlib import Path; p=Path('/srv/repo/offline1.rpm'); b=bytearray(p.read_bytes()); b[-1]^=1; p.write_bytes(b)\"; createrepo_c --update /srv/repo")
     machine.fail("rpm --checksig /srv/repo/offline1.rpm")
@@ -119,7 +123,7 @@ pkgs.testers.runNixOSTest {
     if "${frontend}" == "tdnf":
         machine.succeed(command + "remove repo-tool-net")
         machine.succeed(command + "install repo-tool-offline")
-    elif "${frontend}" == "dnf4":
+    elif "${frontend}" in ("dnf4", "yum"):
         machine.succeed(command + "--setopt=obsoletes=0 swap repo-tool-net repo-tool-offline")
     else:
         machine.succeed(command + "swap repo-tool-net repo-tool-offline")

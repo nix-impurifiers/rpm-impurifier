@@ -93,8 +93,17 @@ PID 1 with mutable native-style unit directories, not a complete Fedora/RHEL
 installation. Repository VMs additionally exercise DNF 4, DNF 5, microdnf
 and tdnf with real createrepo metadata, ephemeral native GPG signing, damaged
 and unsigned package rejection, net failure/offline recovery, transport
-replacement, upgrades/conffiles, runtime removal and GC. Zypper and the other
-RPM frontends remain separate compatibility work.
+replacement, upgrades/conffiles, runtime removal and GC. The DNF 4 SDK's actual `yum` entry point has its own
+matrix test; this does not claim coverage of historical Yum 3.
+
+A separate VM runs Zypper 1.14.102/libzypp 17.38.17 and its real RPM database
+inside the pinned official openSUSE Tumbleweed 20261031 userspace. It checks
+signed repository metadata and RPMs, metadata-tamper and unsigned-package
+rejection, net failure/offline recovery, ordinary-user launch, unchanged native
+checksums, upgrades/conffiles and runtime removal/GC. Nix and Python are supplied
+by an explicitly owned native fixture provider. The fixture shares real Nix
+state and roots with its NixOS host; it does not boot a full SUSE init system.
+The other RPM frontends remain separate compatibility work.
 
 For an explicit same-version transport replacement, use native
 `dnf5 swap APP-net APP-offline` or `microdnf swap APP-net APP-offline`.

@@ -29,3 +29,12 @@ verification policy, this tdnf/RPM combination accepted the unsigned test RPM
 despite `gpgcheck=1`; the test does not claim its default policy rejects it. These are disclosed SDK/fixture
 integration choices, not replacement clients. The VMs use 1 GiB each and CI limits
 concurrent Nix builds to two.
+
+The official openSUSE rootfs is pinned by the compressed OCI layer's SHA-256
+(20261031.37.278, x86_64). Zypper/libzypp, RPM, their shared libraries and installed
+package database all come from that image. Only actual preinstalled Nix/Python
+FHS links are supplied by a fixture RPM; ordinary applications do not depend on
+an invented systemd provider. The test mounts the real Nix store/state plus
+profile/engine state into the userspace so the native GC root paths retain their
+meaning outside the chroot. Native GPG signs both package and repository metadata;
+Zypper's package and repository signature checks remain enabled.

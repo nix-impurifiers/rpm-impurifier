@@ -25,13 +25,15 @@ in
     test "$(wc -l < ${closure}/store-paths)" = 2
     touch $out
   '';
+  repository-zypper = import ./suse-vm.nix { inherit pkgs impurifier; };
   vm = import ./vm.nix {
     inherit pkgs impurifier;
     hardwareFixture = import (coreSrc + "/tests/hardware-fixture.nix") { inherit pkgs; };
   };
 }
 //
-  pkgs.lib.genAttrs [ "repository-dnf4" "repository-dnf5" "repository-microdnf" "repository-tdnf" ]
+  pkgs.lib.genAttrs
+    [ "repository-yum" "repository-dnf4" "repository-dnf5" "repository-microdnf" "repository-tdnf" ]
     (
       name:
       import ./repository-vm.nix {
