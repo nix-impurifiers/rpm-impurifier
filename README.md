@@ -195,3 +195,41 @@ The engine captures explicitly selected ELF files into an immutable Nix-store di
 Consumers select compatible libraries, their non-Nix dependencies, paths and native package dependencies. This does not discover a GPU stack, validate its ABI, rebind already-running processes, or roll back kernel modules. GPU user/kernel compatibility and real-device behavior need hardware tests. Sources outside `/usr/lib`, `/usr/lib64`, `/lib` and `/lib64` need explicit reconciliation after updates. This is a bounded runtime bridge, not automatic GPU compatibility.
 
 The exported `runtimeVersion` follows the later of the pinned core and adapter source timestamps. Application dependencies require that runtime version or newer, rather than accepting every engine as `0.1.0`. This supports ordinary native engine upgrades without project release tags. Consumer-provided Nix dependency expressions remain independent of the engine's own native version.
+
+
+## Native-owned closures and optional bundled Nix
+
+`makeNativeRpms { pkg = myApplication; programs = [ "my-command" ]; }` returns
+a directory of native packages: one application package exporting commands, and
+one package per immutable runtime store object. Exact native dependencies retain
+shared objects. Native tools own the files and package database. The target needs
+no Nix executable, daemon, SQLite database, realization hooks or shared profile.
+Files remain at their original absolute paths; no relocation is performed.
+Inputs may come from any compatible Nix producer. This API currently covers
+payload files and command exports rather than the profile-mode host lifecycle DSL.
+
+Install the collection with ordinary native tools, or publish its artifacts in
+a native repository. Local-file installation may mark supplied dependency
+packages explicit; native dependency marks and cleanup policy remain the caller's
+choice. Upgrades can leave old immutable objects orphaned, so include native
+orphan cleanup when desired. Do not register these same paths into a Nix-managed
+store: Nix GC and native ownership must not overlap.
+
+`makeRuntimeRpm` additionally accepts `bundledNixStore` (a supplied static ELF
+`nix-store` executable) and nonempty `bundledNixNotices`. A bundle makes the
+external native Nix dependency optional and marks the runtime package with its
+actual target architecture. A compatible external client is preferred; otherwise
+the private bundled client is used. Explicit `nixDependency` still requests a
+native provider. Client selection never changes store ownership or trust, and a
+failed mutation is not retried with another client. This is not daemon setup.
+
+`native-vm` tests isolated target-root installation, execution, upgrades, shared
+references, checksum verification and final cleanup without target-side Nix.
+`bundled-vm` reruns native lifecycle and recovery tests without an external client
+on the engine's discovery paths, using the actual static client. Those lifecycle
+fixtures still supply an existing Nix store; database-free operation is established
+by the separate native-owned test, not by the bundled client.
+
+Native-owned RPM collections currently target modern RPM; legacy compatibility
+SDKs retain their existing profile-mode coverage. RPM itself has no automatic
+orphan sweep: cleanup must query dependencies or use an appropriate frontend.

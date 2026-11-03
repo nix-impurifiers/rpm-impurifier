@@ -15,6 +15,18 @@ let
   };
 in
 {
+  native-vm = import ./native-vm.nix { inherit pkgs impurifier coreSrc; };
+  bundled-vm = import ./vm.nix {
+    inherit pkgs;
+    bundled = true;
+    hardwareFixture = import (coreSrc + "/tests/hardware-fixture.nix") { inherit pkgs; };
+    impurifier = impurifier // {
+      runtimeRpm = impurifier.makeRuntimeRpm {
+        bundledNixStore = "${import (coreSrc + "/tests/static-nix.nix") { inherit pkgs; }}/bin/nix-store";
+        bundledNixNotices = [ "${pkgs.nix.src}/COPYING" ];
+      };
+    };
+  };
   unit = impurifier.unit;
   yum3-vm = import ./yum3-vm.nix { inherit pkgs impurifier; };
   alt-vm = import ./alt-vm.nix { inherit pkgs impurifier; };

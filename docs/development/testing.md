@@ -38,3 +38,11 @@ an invented systemd provider. The test mounts the real Nix store/state plus
 profile/engine state into the userspace so the native GC root paths retain their
 meaning outside the chroot. Native GPG signs both package and repository metadata;
 Zypper's package and repository signature checks remain enabled.
+
+
+`native-vm` exercises ordinary native packages in an isolated target root,
+including a shared runtime dependency and final native cleanup. It mounts no
+Nix store into the target and verifies no Nix executable/database/socket exists.
+`bundled-vm` repeats the service/recovery suite with an actual static Nix client
+and no external client on the engine PATH. It verifies packaging/client use,
+not installing a new daemon. See README for native ownership and cleanup policy.

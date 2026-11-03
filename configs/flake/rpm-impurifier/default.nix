@@ -26,6 +26,7 @@
     {
       packages = {
         default = impurifier.engine;
+        hello-native-packages = impurifier.makeNativeRpms { pkg = pkgs.hello; };
         engine = impurifier.engine;
         runtime-rpm = impurifier.runtimeRpm;
         hello-net-rpm = impurifier.makeNetRpm { pkg = pkgs.hello; };

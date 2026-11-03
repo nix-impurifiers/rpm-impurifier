@@ -116,6 +116,24 @@ let
             ''
         }
       '';
+  makeNativeRpms =
+    args:
+    assert lib.assertMsg (
+      rpmCompatibility == "modern"
+    ) "native-owned RPMs currently require modern RPM";
+    let
+      trees = core.makeNativeTrees args;
+    in
+    pkgs.runCommand "native-owned-rpm-collection"
+      {
+        nativeBuildInputs = [
+          pkgs.python3
+          pkgs.rpm
+        ];
+      }
+      ''
+        python3 ${./native-rpms.py} ${trees} "$out" ${architecture} ${pkgs.runtimeShell}
+      '';
   makeRpm =
     args@{
       pkg,
@@ -160,20 +178,24 @@ let
     };
   makeRuntimeRpm =
     {
-      nixDependency ? "(nix or nix-external-runtime)",
+      bundledNixStore ? null,
+      bundledNixNotices ? [ ],
+      nixDependency ? (if bundledNixStore == null then "(nix or nix-external-runtime)" else null),
     }:
     assert lib.assertMsg (
-      builtins.match "[A-Za-z0-9 .,+|():<>=~_-]+" nixDependency != null
+      (nixDependency == null && bundledNixStore != null)
+      || (nixDependency != null && builtins.match "[A-Za-z0-9 .,+|():<>=~_-]+" nixDependency != null)
     ) "invalid native Nix dependency expression";
     buildRpm {
       name = "rpm-impurifier";
       version = core.runtimeVersion;
-      payload = core.makeRuntimeTree { };
+      architecture = if bundledNixStore == null then "noarch" else architecture;
+      payload = core.makeRuntimeTree { inherit bundledNixStore bundledNixNotices; };
       description = "Native package intent projected into a Nix profile";
       license = "MIT";
       extraSpec = ''
         Requires: python3, /bin/sh
-        Requires: ${nixDependency}
+        ${lib.optionalString (nixDependency != null) "Requires: ${nixDependency}"}
       '';
       scriptlets = ''
         # Solvers may autoremove this runtime with its last dependent app.
@@ -204,7 +226,12 @@ in
     unit
     runtimeVersion
     ;
-  inherit makeRpm makeRuntimeRpm buildRpm;
+  inherit
+    makeRpm
+    makeRuntimeRpm
+    buildRpm
+    makeNativeRpms
+    ;
   coreSource = coreSrc;
   altVerificationHook = ./alt-verify.sh;
   runtimeRpm = makeRuntimeRpm { };

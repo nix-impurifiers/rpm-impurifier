@@ -3,6 +3,7 @@
   pkgs,
   impurifier,
   hardwareFixture,
+  bundled ? false,
 }:
 let
   tool =
@@ -119,8 +120,8 @@ pkgs.testers.runNixOSTest {
       "L+ /usr/bin/systemctl - - - - ${pkgs.systemd}/bin/systemctl"
       "L+ /usr/bin/systemd-sysusers - - - - ${pkgs.systemd}/bin/systemd-sysusers"
       "L+ /usr/bin/systemd-tmpfiles - - - - ${pkgs.systemd}/bin/systemd-tmpfiles"
-      "L+ /usr/bin/nix-store - - - - ${pkgs.nix}/bin/nix-store"
-    ];
+    ]
+    ++ pkgs.lib.optional (!bundled) "L+ /usr/bin/nix-store - - - - ${pkgs.nix}/bin/nix-store";
     nix.settings.substituters = lib.mkForce [ ];
   };
   testScript = ''
@@ -132,6 +133,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("cp ${hostDriver "1"} /tmp/packages/driver1.rpm; cp ${hostDriver "2"} /tmp/packages/driver2.rpm; cp ${hardwareApp} /tmp/packages/hardware.rpm")
     machine.succeed("systemctl stop dhcpcd; ip link set eth0 down")
     machine.succeed("rpm -Uvh ${provider} ${impurifier.runtimeRpm}")
+    ${pkgs.lib.optionalString bundled ''machine.succeed("test ! -e /usr/bin/nix-store && test ! -e /nix/var/nix/profiles/default/bin/nix-store && /usr/lib/rpm-impurifier/nix-store --version")''}
     machine.fail("test -e ${builtins.unsafeDiscardStringContext (toString (tool "1"))}")
     with subtest("failed net transaction preserves the old profile and reports trigger failure"):
         before = machine.succeed("readlink /opt/nix/profile").strip()

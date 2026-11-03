@@ -78,11 +78,11 @@
     "impurifier": {
       "flake": false,
       "locked": {
-        "lastModified": 1793639406,
-        "narHash": "sha256-8t5OwyIwIb810CNp+ZOdhHQTFUejNbDJhfwV9ouNqVw=",
+        "lastModified": 1793699690,
+        "narHash": "sha256-60/f89+fPzXnRzJ/Z4oiYkwbz8QGpYYREkg97rGpBhs=",
         "owner": "nix-impurifiers",
         "repo": "impurifier",
-        "rev": "7b365f48342b8ce06642528829e8b890d08b54bd",
+        "rev": "7e9730cf0a4870d467443f97486ab48e81a64615",
         "type": "github"
       },
       "original": {
